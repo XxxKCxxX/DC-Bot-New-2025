@@ -1,8 +1,3 @@
 {
-    "token": "DEIN_DISCORD_BOT_TOKEN",
-    "channel_id": "DEIN_CHANNEL_ID",
-    "db_host": "localhost",
-    "db_user": "dein_mysql_benutzer",
-    "db_password": "dein_mysql_passwort",
-    "db_name": "dein_db_name"
-  }
+  "token": "ODc2MjI1NjIwOTgyNTEzNzY0.GppekZ.mIS49OK3a_IlvgO2O9yUGxlPxbWIjVWD72XnoA"
+}
