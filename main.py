@@ -1,6 +1,5 @@
 import discord
 import json
-import mysql.connector
 from discord.ext import commands
 
 # Lade die Konfigurationsdatei
