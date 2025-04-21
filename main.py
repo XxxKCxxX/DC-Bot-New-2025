@@ -7,6 +7,9 @@ import requests
 with open('config.json') as f:
     config = json.load(f)
 
+with open('token.json') as f:
+    token = json.load(f)
+
 intents = discord.Intents.default()
 intents.messages = True
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -43,4 +46,4 @@ async def on_ready():
 bot.tree.add_command(get_ip)
 
 
-bot.run(config["token"])
+bot.run(token["token"])
