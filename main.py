@@ -28,7 +28,7 @@ async def get_ip(interaction: discord.Interaction):
         data = response.json() 
 
         ip = data.get("ip", "Unbekannt") #Standartwert "Unbekannt" falls kein IP gefunden wird
-        await interaction.response.send_message(f"Server-IP:\n```\n{ip}\n```")
+        await interaction.response.send_message(f"Server IP:\n```\n{ip}\n```")
     except Exception as e:
         await interaction.response.send_message(f"Fehler beim Abrufen der IP-Adresse: {e}", ephemeral=True)
 
