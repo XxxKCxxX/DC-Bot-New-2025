@@ -3,6 +3,9 @@ import json
 from discord.ext import commands
 from discord import app_commands
 import requests
+import subprocess
+
+    
 
 with open('config.json') as f:
     config = json.load(f)
@@ -15,8 +18,21 @@ intents.messages = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 
+@app_commands.command(name="plugins", description="Zeigt alle Plugins an")  
+async def get_plugins(interaction: discord.Interaction):
+    if interaction.channel_id != 1168538940580561026:
+        await interaction.response.send_message("Dieser Command ist in diesem Channel nicht erlaubt.", ephemeral=True)
+        return
+    
+    try:
+        result = subprocess.run(["ls", "-1"], capture_output=True, text=True, cwd="/home/pi/server2025/plugins/", check=True)
+        plugins = result.stdout.splitlines()
+        plugins_list = "\n".join(plugins) if plugins else "Keine Plugins gefunden."
+        await interaction.response.send_message(f"Plugins: \n```{plugins_list}```", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"Fehler beim Abrufen der Plugins: \n```{e}```", ephemeral=True)
 
-@app_commands.command(name="ip", description="Get IP")
+@app_commands.command(name="ip", description="Zeigt die IP des Servers an")
 async def get_ip(interaction: discord.Interaction):
     if interaction.channel_id != 1168538940580561026:
         await interaction.response.send_message("Dieser Command ist in diesem Channel nicht erlaubt.", ephemeral=True)
@@ -28,7 +44,7 @@ async def get_ip(interaction: discord.Interaction):
         data = response.json() 
 
         ip = data.get("ip", "Unbekannt") #Standartwert "Unbekannt" falls kein IP gefunden wird
-        await interaction.response.send_message(f"Server IP:\n```\n{ip}\n```")
+        await interaction.response.send_message(f"Server IP:\n```\n{ip}\n```", ephemeral=True)
     except Exception as e:
         await interaction.response.send_message(f"Fehler beim Abrufen der IP-Adresse: {e}", ephemeral=True)
 
@@ -44,6 +60,7 @@ async def on_ready():
             print(f"Fehler beim Synchronisieren der Slash-Commands: {e}")
 
 bot.tree.add_command(get_ip)
+bot.tree.add_command(get_plugins)
 
 
 bot.run(token["token"])
