@@ -25,7 +25,7 @@ async def get_plugins(interaction: discord.Interaction):
         return
     
     try:
-        result = subprocess.run(["ls", "-1"], capture_output=True, text=True, cwd="/home/pi/server2025/plugins/", check=True)
+        result = subprocess.run(["ls", "-1"], capture_output=True, text=True, cwd="/home/pi/ServerOkt2025/plugins/", check=True)
         plugins = result.stdout.splitlines()
         plugins_list = "\n".join(plugins) if plugins else "Keine Plugins gefunden."
         await interaction.response.send_message(f"Plugins: \n```{plugins_list}```", ephemeral=True)
