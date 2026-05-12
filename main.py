@@ -7,8 +7,7 @@ import subprocess
 
 Kaze: discord.Member = None
 
-channel_mc: discord.TextChannel = 1168538940580561026
-cat_games: discord.CategoryChannel = 1205449776439500820
+
 
 with open('config.json') as f:
     config = json.load(f)
@@ -20,6 +19,10 @@ intents = discord.Intents.default()
 intents.messages = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
+
+channel_mc: discord.TextChannel = config["channel_mc"]
+cat_games: discord.CategoryChannel = config["cat_games"]
+channel_ids: list[discord.TextChannel] = config["channel_ids"]
 
 @app_commands.command(name="plugins", description="Zeigt alle Minecraft Plugins an")  
 async def get_plugins(interaction: discord.Interaction, server: str = "ServerOkt2025"):
@@ -40,8 +43,8 @@ async def get_plugins(interaction: discord.Interaction, server: str = "ServerOkt
 
 @app_commands.command(name="ip", description="Zeigt die IP des Servers an")
 async def get_ip(interaction: discord.Interaction):
-    if interaction.channel.category_id != cat_games:
-        await interaction.response.send_message("Dieser Command ist in diesem Channel nicht erlaubt.", ephemeral=True)
+    if interaction.channel.id not in channel_ids:
+        await interaction.response.send_message(f"Dieser Command ist nur in den Kanälen {', '.join([f'<#{cid}>' for cid in channel_ids])} erlaubt.", ephemeral=True)
         return
 
     try:
