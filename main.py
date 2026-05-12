@@ -91,11 +91,11 @@ class RoleView(discord.ui.View):
         selected_role = discord.utils.get(interaction.guild.roles, name=select.values[0])
 
         if selected_role in interaction.user.roles:
-            print("Rolle entfernen")
+            print(f"Rolle {selected_role.name} für {interaction.user.name} entfernen")
             await interaction.user.remove_roles(selected_role)
             await interaction.response.send_message(f"Rolle {selected_role.name} entfernt.", ephemeral=True)
         else:
-            print("Rolle hinzufügen")
+            print(f"Rolle {selected_role.name} für {interaction.user.name} hinzufügen")
             await interaction.user.add_roles(selected_role)
             await interaction.response.send_message(f"Rolle {selected_role.name} hinzugefügt.", ephemeral=True)
 
