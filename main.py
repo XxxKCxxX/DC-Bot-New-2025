@@ -1,6 +1,5 @@
 import asyncio
-from os import link
-
+from sys import platform
 import discord
 import json
 from discord.ext import commands
@@ -16,6 +15,11 @@ with open('config.json') as f:
 
 with open('token.json') as f:
     token = json.load(f)
+
+if platform.system() == "Windows":
+    FFMPEG_EXE = "ffmpeg.exe" # Liegt in deinem Projektordner
+else:
+    FFMPEG_EXE = "ffmpeg"
 
 YDL_OPTIONS = {'format': 'bestaudio/best', 'noplaylist': True}
 FFMPEG_OPTIONS = {'options': '-vn'}
@@ -163,7 +167,7 @@ def play_next(interaction):
         song = song_queue.pop(0) # Nimm das erste Lied aus der Liste
         
         # Den Stream erstellen
-        source = discord.FFmpegPCMAudio(song['url'], executable="ffmpeg.exe", **FFMPEG_OPTIONS)
+        source = discord.FFmpegPCMAudio(song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
         
         # Nach dem Song sich selbst wieder aufrufen
         vc.play(source, after=lambda e: play_next(interaction))

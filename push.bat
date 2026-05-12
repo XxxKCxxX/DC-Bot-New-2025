@@ -1,3 +1,3 @@
 git add .
-git commit -m "Update Okt 2025"  
+git commit -m "Update Voice"  
 git push origin main
