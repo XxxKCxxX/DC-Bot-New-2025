@@ -138,7 +138,7 @@ async def skip(interaction: discord.Interaction):
     if interaction.guild.voice_client is None: return
     interaction.guild.voice_client.stop()
     await asyncio.sleep(0.5)
-
+    await interaction.followup.send("Lied übersprungen!", ephemeral=True, delete_after=5)
 
 @app_commands.command(name="warteschlange", description="Zeigt die aktuelle Warteschlange an")
 async def warteschlange(interaction: discord.Interaction):
