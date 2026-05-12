@@ -108,7 +108,7 @@ async def play(interaction: discord.Interaction, query: str):
     else:
         interaction.guild.voice_client.stop()
 
-    await interaction.followup.send(f"Spiele {get_info(query)['title']} ab!", ephemeral=False)
+    await interaction.followup.send(f"Spiele [{get_info(query)['title']}]({get_info(query)['url']}) ab!", ephemeral=False)
     
 
 @app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
@@ -138,7 +138,7 @@ async def skip(interaction: discord.Interaction):
     if interaction.guild.voice_client is None: return
     interaction.guild.voice_client.stop()
     await asyncio.sleep(0.5)
-    await interaction.followup.send("Lied übersprungen!", ephemeral=True, delete_after=5)
+    await interaction.followup.send(f"Lied wurde von {interaction.user.mention} übersprungen!", ephemeral=False)
 
 @app_commands.command(name="warteschlange", description="Zeigt die aktuelle Warteschlange an")
 async def warteschlange(interaction: discord.Interaction):
