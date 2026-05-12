@@ -16,7 +16,7 @@ with open('config.json') as f:
 with open('token.json') as f:
     token = json.load(f)
 
-if platform.system() == "win32":
+if platform == "win32":
     FFMPEG_EXE = "ffmpeg.exe" # Liegt in deinem Projektordner
 else:
     FFMPEG_EXE = "ffmpeg"
