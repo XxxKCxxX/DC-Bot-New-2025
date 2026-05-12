@@ -1,3 +1,6 @@
+import asyncio
+from os import link
+
 import discord
 import json
 from discord.ext import commands
@@ -5,10 +8,7 @@ from discord import app_commands
 import discord.ui
 import requests
 import subprocess
-
-
-Kaze: discord.Member = None
-
+import yt_dlp
 
 
 with open('config.json') as f:
@@ -16,6 +16,10 @@ with open('config.json') as f:
 
 with open('token.json') as f:
     token = json.load(f)
+
+YDL_OPTIONS = {'format': 'bestaudio/best', 'noplaylist': True}
+FFMPEG_OPTIONS = {'options': '-vn'}
+song_queue = []
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -33,21 +37,22 @@ async def get_plugins(interaction: discord.Interaction, server: str = "ServerOkt
    
     
     if interaction.channel_id != channel_mc.id:
-        await interaction.response.send_message("Dieser Command ist nur in <"+str(channel_mc)+"> nicht erlaubt.", ephemeral=True)
+        await interaction.response.send_message("Dieser Command ist nur in <"+str(channel_mc)+"> nicht erlaubt.", ephemeral=True, delete_after=5)
         return
     
     try:
-        result = subprocess.run(["ls", "-1"], capture_output=True, text=True, cwd="/home/pi/"+server+"/plugins/", check=True)
+        result = subprocess.run(["ls", "-1"], capture_output=True, text=True, cwd="/home/pi/"+server+"/plugins/", check=True, delete_after=5)
         plugins = result.stdout.splitlines()
         plugins_list = "\n".join(plugins) if plugins else "Keine Plugins gefunden."
         await interaction.response.send_message(f"Plugins: \n```{plugins_list}```", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"{Kaze.mention} - Fehler beim Abrufen der Plugins: \n```{e}```", ephemeral=False)
+        await interaction.response.send_message(f"{Kaze.mention} - Fehler beim Abrufen der Plugins: \n```{e}```", ephemeral=False, delete_after=5)
+
 
 @app_commands.command(name="ip", description="Zeigt die IP des Servers an")
 async def get_ip(interaction: discord.Interaction):
     if interaction.channel.id not in channel_ids:
-        await interaction.response.send_message(f"Dieser Command ist nur in den Kanälen {', '.join([f'<#{cid}>' for cid in channel_ids])} erlaubt.", ephemeral=True)
+        await interaction.response.send_message(f"Dieser Command ist nur in den Kanälen {', '.join([f'<#{cid}>' for cid in channel_ids])} erlaubt.", ephemeral=True, delete_after=5)
         return
 
     try:
@@ -59,7 +64,131 @@ async def get_ip(interaction: discord.Interaction):
         await interaction.response.send_message(f"Server IP:\n```\n{ip}\n```", ephemeral=True)
     except Exception as e:
          
-        await interaction.response.send_message(f"Fehler beim Abrufen der IP-Adresse: {e}", ephemeral=False)
+        await interaction.response.send_message(f"Fehler beim Abrufen der IP-Adresse: {e}", ephemeral=False, delete_after=5)
+
+
+
+
+
+@app_commands.command(name="join", description="Joint deinem Voice Channel")
+async def join(interaction: discord.Interaction):
+
+    await interaction.response.defer()
+    await connect(interaction)
+
+
+@app_commands.command(name="leave", description="Verlässt den Voice Channel")
+async def leave(interaction: discord.Interaction):
+    await interaction.response.defer()
+    if interaction.guild.voice_client:
+        await interaction.guild.voice_client.disconnect()
+        await interaction.followup.send("Ich habe den Voice Channel verlassen!", ephemeral=True)
+    else:
+        await interaction.followup.send("Ich bin in keinem Voice Channel!", ephemeral=True)
+
+@app_commands.command(name="play", description="Skippt die queue / Link oder Suche")
+async def play(interaction: discord.Interaction, query: str):
+    await interaction.response.defer()
+
+    await connect(interaction)
+    
+    oldq = song_queue
+    song_queue.clear()
+    song_queue.append(get_info(query))
+    song_queue.extend(oldq) 
+
+    
+    interaction.guild.voice_client.resume()
+    if not interaction.guild.voice_client.is_playing():
+        play_next(interaction) 
+    else:
+        interaction.guild.voice_client.stop()
+
+    await interaction.followup.send(f"Spiele {get_info(query)['title']} ab!", ephemeral=False)
+    
+
+@app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
+async def pause(interaction: discord.Interaction):
+    await interaction.response.send_message(":thumbsup::skin-tone-3:", ephemeral=True, delete_after=1)
+    if interaction.guild.voice_client is None: return
+    if interaction.guild.voice_client.is_playing():
+        interaction.guild.voice_client.pause()
+    else:
+        interaction.guild.voice_client.resume()
+
+@app_commands.command(name="queue", description="Fügt ein Lied zur Warteschlange hinzu / Link oder Suche")
+async def queue(interaction: discord.Interaction, query: str):
+    await interaction.response.defer()
+
+    await connect(interaction)
+    
+    if len(song_queue) > config["max_queue_length"]:
+        await interaction.followup.send(f"Die Warteschlange ist voll! Maximal {config['max_queue_length']} Lieder erlaubt.", ephemeral=True)
+        return
+    song_queue.append(get_info(query))
+    await interaction.followup.send(f"Das Lied wurde zur Warteschlange hinzugefügt!", ephemeral=False)
+
+@app_commands.command(name="skip", description="Überspringt das aktuelle Lied")
+async def skip(interaction: discord.Interaction):
+    await interaction.response.defer()
+    if interaction.guild.voice_client is None: return
+    interaction.guild.voice_client.stop()
+    await asyncio.sleep(0.5)
+
+
+@app_commands.command(name="warteschlange", description="Zeigt die aktuelle Warteschlange an")
+async def warteschlange(interaction: discord.Interaction):
+    if len(song_queue) == 0:
+        await interaction.response.send_message("Die Warteschlange ist leer!", ephemeral=True, delete_after=5)
+        return
+    
+    queue_list = "\n".join([f"{idx+1}. {song['title']}" for idx, song in enumerate(song_queue)])
+    await interaction.response.send_message(f"Aktuelle Warteschlange:\n```\n{queue_list}\n```", ephemeral=False, delete_after=30)
+
+
+async def connect(interaction):
+    if interaction.guild.voice_client is None: 
+        await interaction.user.voice.channel.connect()
+        return
+    if interaction.guild.voice_client.is_connected():
+        if interaction.user.voice and interaction.user.voice.channel:
+            channel = interaction.user.voice.channel
+            if channel != interaction.user.voice.channel:
+                await channel.connect()
+
+
+def play_next(interaction):
+    vc = interaction.guild.voice_client
+    if vc and len(song_queue) > 0:
+        song = song_queue.pop(0) # Nimm das erste Lied aus der Liste
+        
+        # Den Stream erstellen
+        source = discord.FFmpegPCMAudio(song['url'], executable="ffmpeg.exe", **FFMPEG_OPTIONS)
+        
+        # Nach dem Song sich selbst wieder aufrufen
+        vc.play(source, after=lambda e: play_next(interaction))
+
+
+def get_info(url):
+    if "http" not in url:
+        #Wenn es kein Link ist, sondern eine Suche, dann suche nach dem ersten Ergebnis mit url als query
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
+            url = info['url']
+    
+    else: 
+        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url = info['url']
+    return info
+
+
+
+
+
+
+
+
 
 
 class RoleView(discord.ui.View):
@@ -76,7 +205,7 @@ class RoleView(discord.ui.View):
                         role = discord.utils.get(interaction.guild.roles, name=option.value)
                         if role and role not in interaction.user.roles:
                             await interaction.user.add_roles(role)
-                await interaction.response.send_message("Alle Spiel Rollen hinzugefügt.", ephemeral=True)
+                await interaction.response.send_message("Alle Spiel Rollen hinzugefügt.", ephemeral=True, delete_after=5)
                 return
         if select.values[0] == "Alle Spiele entfernen":
             #ALLE rollen die die anderen role options sind entfernen
@@ -85,7 +214,7 @@ class RoleView(discord.ui.View):
                         role = discord.utils.get(interaction.guild.roles, name=option.value)
                         if role and role in interaction.user.roles:
                             await interaction.user.remove_roles(role)
-                await interaction.response.send_message("Alle Spiel Rollen entfernt.", ephemeral=True)
+                await interaction.response.send_message("Alle Spiel Rollen entfernt.", ephemeral=True, delete_after=5)
                 return
 
         selected_role = discord.utils.get(interaction.guild.roles, name=select.values[0])
@@ -93,11 +222,11 @@ class RoleView(discord.ui.View):
         if selected_role in interaction.user.roles:
             print(f"Rolle {selected_role.name} für {interaction.user.name} entfernen")
             await interaction.user.remove_roles(selected_role)
-            await interaction.response.send_message(f"Rolle {selected_role.name} entfernt.", ephemeral=True)
+            await interaction.response.send_message(f"Rolle {selected_role.name} entfernt.", ephemeral=True, delete_after=5)
         else:
             print(f"Rolle {selected_role.name} für {interaction.user.name} hinzufügen")
             await interaction.user.add_roles(selected_role)
-            await interaction.response.send_message(f"Rolle {selected_role.name} hinzugefügt.", ephemeral=True)
+            await interaction.response.send_message(f"Rolle {selected_role.name} hinzugefügt.", ephemeral=True, delete_after=5)
 
 
 @bot.event
@@ -121,6 +250,10 @@ async def on_ready():
         print(f"Fehler beim Abrufen der Kanäle: {e}")
         await Kaze.send("Fehler beim Abrufen der Kanäle: " + str(e))
     
+    for vc in bot.voice_clients:
+        await vc.disconnect(force=True)
+
+
     category_games = bot.guilds[0].get_channel(config["cat_games_id"])
     role_options.clear()
     role_options.append(discord.SelectOption(label="Alle Spiele hinzufügen", value="Alle Spiele hinzufügen"))
@@ -135,6 +268,12 @@ async def on_ready():
 
 bot.tree.add_command(get_ip)
 bot.tree.add_command(get_plugins)
-
+bot.tree.add_command(join)
+bot.tree.add_command(leave)
+bot.tree.add_command(play)
+bot.tree.add_command(pause)
+bot.tree.add_command(queue)
+bot.tree.add_command(skip)
+bot.tree.add_command(warteschlange)
 
 bot.run(token["token"])
