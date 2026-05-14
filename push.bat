@@ -1,3 +1,3 @@
 git add .
-git commit -m "Update information about the song to include the query and user who added it"  
+git commit -m "Updated main.py with new information handling and queue management."  
 git push origin main

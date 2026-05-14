@@ -105,10 +105,10 @@ async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
     await connect(interaction)
-    info = get_info(query, interaction.user)
+    information = get_info(query, interaction.user)
     oldq = song_queue.copy()
     song_queue.clear()
-    song_queue.append(info)
+    song_queue.append(information)
     song_queue.extend(oldq) 
 
     
@@ -122,11 +122,11 @@ async def play(interaction: discord.Interaction, query: str):
         interaction.guild.voice_client.stop()
         await asyncio.sleep(0.5)
     
-    if "http" in info['query']:
-        link = info['query'] 
+    if "http" in information['query']:
+        link = information['query'] 
     else:
-        link = info['url'] 
-    await interaction.followup.send(f"Spiele ({info['title']}]({link}) ab!", ephemeral=False)
+        link = information['url'] 
+    await interaction.followup.send(f"Spiele [{information['title']}]({link}) ab!", ephemeral=False)
     
 
 @app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
@@ -141,14 +141,18 @@ async def pause(interaction: discord.Interaction):
 @app_commands.command(name="queue", description="Fügt ein Lied zur Warteschlange hinzu / Link oder Suche")
 async def queue(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
-    info = get_info(query, interaction.user)
+    information = get_info(query, interaction.user)
     await connect(interaction)
     
     if len(song_queue) > config["max_queue_length"]:
         await interaction.followup.send(f"Die Warteschlange ist voll! Maximal {config['max_queue_length']} Lieder erlaubt.", ephemeral=True)
         return
-    song_queue.append(info)
-    await interaction.followup.send(f"Das Lied {info['title']}[{info['url']}] wurde zur Warteschlange hinzugefügt!", ephemeral=False)
+    song_queue.append(information)
+    if "http" in information['query']:
+        link = information['query'] 
+    else:
+        link = information['url'] 
+    await interaction.followup.send(f"Das Lied ({information['title']})[{link}] wurde zur Warteschlange hinzugefügt!", ephemeral=False)
 
 @app_commands.command(name="skip", description="Überspringt das aktuelle Lied")
 async def skip(interaction: discord.Interaction):
@@ -166,10 +170,12 @@ async def info(interaction: discord.Interaction):
 
     current_song = song_queue[0] if song_queue else None
     if not current_song: return
-    if "http" in current_song["query"]:
-        await interaction.followup.send(f"Das Lied {current_song['title']}[{current_song['query']}] wurde von {current_song['user'].mention} hinzugefügt!")
+    if "http" in current_song['query']:
+        link = current_song['query'] 
     else:
-        await interaction.followup.send(f"Das Lied {current_song['title']} wurde von {current_song['user'].mention} unter {current_song['query']} gefunden!")
+        link = current_song['url'] 
+
+    await interaction.followup.send(f"Das Lied [{current_song['title']}]({link}) wurde von {current_song['user'].mention} unter {current_song['query']} gefunden!")
 
 
 
@@ -211,16 +217,16 @@ def get_info(url, user):
     if "http" not in url:
         #Wenn es kein Link ist, sondern eine Suche, dann suche nach dem ersten Ergebnis mit url als query
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
+            information = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
 
     
     else: 
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
+            information = ydl.extract_info(url, download=False)
 
-    info["query"] = url
-    info["user"] = user
-    return info
+    information["query"] = url
+    information["user"] = user
+    return information
 
 
 
