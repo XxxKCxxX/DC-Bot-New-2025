@@ -1,3 +1,3 @@
 git add .
-git commit -m "Update main.py - added check for current_song being None before trying to play next song" 
+git commit -m "setup config arg added, info command fixed, after function fixed"
 git push origin main

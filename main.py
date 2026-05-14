@@ -165,8 +165,6 @@ async def skip(interaction: discord.Interaction):
 @app_commands.command(name="info", description="Zeigt Informationen über das aktuelle Lied an")
 async def info(interaction: discord.Interaction):
     await interaction.response.defer()
-    if interaction.guild.voice_client is None: return
-    if not interaction.guild.voice_client.is_playing(): return
 
     
     if current_song == None: 
@@ -242,10 +240,10 @@ def get_info(url, user):
 
 class RoleView(discord.ui.View):
     def __init__(self):
-        super().__init__()
+        super().__init__(timeout=None)
 
 
-    @discord.ui.select(placeholder="Rolle auswählen", min_values=1, max_values=len(role_options), options=role_options)
+    @discord.ui.select(placeholder="Rolle auswählen", min_values=1, max_values=len(role_options), options=role_options, custom_id="role_select")
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         if select.values[0] == "Alle Spiele hinzufügen":
             #ALLE rollen die die anderen role options sind hinzufügen
@@ -303,18 +301,20 @@ async def on_ready():
     for vc in bot.voice_clients:
         await vc.disconnect(force=True)
 
-
-    category_games = bot.guilds[0].get_channel(config["cat_games_id"])
-    role_options.clear()
-    role_options.append(discord.SelectOption(label="Alle Spiele hinzufügen", value="Alle Spiele hinzufügen"))
-    role_options.append(discord.SelectOption(label="Alle Spiele entfernen", value="Alle Spiele entfernen"))
-    for channel in category_games.channels:
-        if channel.id == config["ch_games-roles_id"]:
-            continue
-        role_options.append(discord.SelectOption(label=channel.name, value=str(channel.topic)))
-    ch_gamesroles = category_games.channels[0]
-    if ch_gamesroles != None: await ch_gamesroles.purge()
-    if ch_gamesroles != None: await ch_gamesroles.send("Wähle Game Rollen ab oder an, um den jeweiligen Channel zu sehen", view=RoleView())
+    if config["setup"]:
+        category_games = bot.guilds[0].get_channel(config["cat_games_id"])
+        role_options.clear()
+        role_options.append(discord.SelectOption(label="Alle Spiele hinzufügen", value="Alle Spiele hinzufügen"))
+        role_options.append(discord.SelectOption(label="Alle Spiele entfernen", value="Alle Spiele entfernen"))
+        for channel in category_games.channels:
+            if channel.id == config["ch_games-roles_id"]:
+                continue
+            role_options.append(discord.SelectOption(label=channel.name, value=str(channel.topic)))
+        ch_gamesroles = category_games.channels[0]
+        if ch_gamesroles != None: await ch_gamesroles.purge()
+        if ch_gamesroles != None: await ch_gamesroles.send("Wähle Game Rollen ab oder an, um den jeweiligen Channel zu sehen", view=RoleView())
+    else:
+        bot.add_view(RoleView())
 
 bot.tree.add_command(get_ip)
 bot.tree.add_command(get_plugins)
