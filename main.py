@@ -248,7 +248,7 @@ class RoleView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    global Kaze, channel_mc, cat_games
+    global Kaze, channel_mc, cat_games, channel_music
     print(f'Bot {bot.user} ist online!')
     Kaze = await bot.guilds[0].fetch_member(kaze_id)
 
