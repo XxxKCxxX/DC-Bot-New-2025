@@ -30,9 +30,11 @@ intents.messages = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 role_options: list[discord.SelectOption] = [discord.SelectOption(label="placeholder", value="placeholder")]
+#Hier nur IDs - später conversion in on_ready
 channel_mc: discord.TextChannel = config["ch_mc_id"]
 cat_games: discord.CategoryChannel = config["cat_games_id"]
 channel_ids: list[discord.TextChannel] = config["ch_ip_ids"]
+channel_music: discord.TextChannel = config["ch_music_id"]
 kaze_id = config["us_Kaze_id"]
 
 @app_commands.command(name="plugins", description="Zeigt alle Minecraft Plugins an")  
@@ -72,6 +74,13 @@ async def get_ip(interaction: discord.Interaction):
 
 
 
+@app_commands.command(name="restart", description="Startet den Bot neu")
+async def restart(interaction: discord.Interaction):
+    await interaction.response.send_message("Starte den Bot neu...", ephemeral=True)
+    await Kaze.send("Bot wird neu gestartet von " + interaction.user.mention)
+    await bot.close()  
+
+
 
 
 @app_commands.command(name="join", description="Joint deinem Voice Channel")
@@ -95,20 +104,24 @@ async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
     await connect(interaction)
-    
+    info = get_info(query)
     oldq = song_queue
     song_queue.clear()
-    song_queue.append(get_info(query))
+    song_queue.append(info)
     song_queue.extend(oldq) 
 
     
     interaction.guild.voice_client.resume()
     if not interaction.guild.voice_client.is_playing():
+        await asyncio.sleep(0.5)
         play_next(interaction) 
+        await asyncio.sleep(0.5)
     else:
+        await asyncio.sleep(0.5)
         interaction.guild.voice_client.stop()
+        await asyncio.sleep(0.5)
 
-    await interaction.followup.send(f"Spiele [{get_info(query)['title']}]({get_info(query)['url']}) ab!", ephemeral=False)
+    await interaction.followup.send(f"Spiele [{info['title']}]({info['url']}) ab!", ephemeral=False)
     
 
 @app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
@@ -162,7 +175,7 @@ async def connect(interaction):
 
 
 def play_next(interaction):
-    vc = interaction.guild.voice_client
+    vc: discord.VoiceClient = interaction.guild.voice_client
     if vc and len(song_queue) > 0:
         song = song_queue.pop(0) # Nimm das erste Lied aus der Liste
         
@@ -249,6 +262,7 @@ async def on_ready():
     try:
         channel_mc = bot.guilds[0].get_channel(channel_mc)
         cat_games = bot.guilds[0].get_channel(cat_games)
+        channel_music = bot.guilds[0].get_channel(channel_music)
         await Kaze.send("Bot ist online!")
     except Exception as e:
         print(f"Fehler beim Abrufen der Kanäle: {e}")
@@ -279,5 +293,6 @@ bot.tree.add_command(pause)
 bot.tree.add_command(queue)
 bot.tree.add_command(skip)
 bot.tree.add_command(warteschlange)
+bot.tree.add_command(restart)
 
 bot.run(token["token"])
