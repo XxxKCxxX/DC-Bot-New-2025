@@ -168,8 +168,10 @@ async def info(interaction: discord.Interaction):
     if interaction.guild.voice_client is None: return
     if not interaction.guild.voice_client.is_playing(): return
 
-    current_song = song_queue[0] if song_queue else None
-    if not current_song: return
+    
+    if current_song == None: 
+        await interaction.followup.send("Es wird gerade kein Lied abgespielt!", ephemeral=True)
+        return
     if "http" in current_song['query']:
         link = current_song['query'] 
     else:
@@ -211,7 +213,8 @@ def play_next(interaction):
         
         # Nach dem Song sich selbst wieder aufrufen
         vc.play(source, after=lambda e: play_next(interaction))
-
+    else:
+        current_song = None
 
 def get_info(url, user):
     if "http" not in url:

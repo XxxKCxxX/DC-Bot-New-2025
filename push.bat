@@ -1,3 +1,3 @@
 git add .
-git commit -m "Updated main.py with new information handling and queue management."  
+git commit -m "Update main.py - added check for current_song being None before trying to play next song" 
 git push origin main
