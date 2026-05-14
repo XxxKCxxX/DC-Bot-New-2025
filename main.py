@@ -37,6 +37,7 @@ channel_ids: list[discord.TextChannel] = config["ch_ip_ids"]
 channel_music: discord.TextChannel = config["ch_music_id"]
 kaze_id = config["us_Kaze_id"]
 current_song: dict = None
+bool_loop = False
 
 @app_commands.command(name="plugins", description="Zeigt alle Minecraft Plugins an")  
 async def get_plugins(interaction: discord.Interaction, server: str = "ServerOkt2025"):
@@ -81,6 +82,14 @@ async def restart(interaction: discord.Interaction):
     await Kaze.send("Bot wird neu gestartet von " + interaction.user.mention)
     await bot.close()  
 
+@app_commands.command(name="loop", description="Schleife die aktuelle Warteschlange")
+async def loop(interaction: discord.Interaction):
+    global bool_loop
+    bool_loop = not bool_loop
+    if bool_loop:
+        await interaction.response.send_message("Die Warteschlange wird nun in einer Schleife abgespielt!", ephemeral=True, delete_after=5)
+    else:
+        await interaction.response.send_message("Die Warteschlange wird nun nicht mehr in einer Schleife abgespielt!", ephemeral=True, delete_after=5)
 
 
 
@@ -203,13 +212,15 @@ async def connect(interaction):
 def play_next(interaction):
     global current_song, song_queue
     vc: discord.VoiceClient = interaction.guild.voice_client
+    if bool_loop and current_song is not None:
+        source = discord.FFmpegPCMAudio(song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
+        vc.play(source, after=lambda e: play_next(interaction))
+        return
     if vc and len(song_queue) > 0:
         song = song_queue.pop(0) # Nimm das erste Lied aus der Liste
         current_song = song.copy()
-        # Den Stream erstellen
         source = discord.FFmpegPCMAudio(song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
-        
-        # Nach dem Song sich selbst wieder aufrufen
+
         vc.play(source, after=lambda e: play_next(interaction))
     else:
         current_song = None
@@ -327,5 +338,6 @@ bot.tree.add_command(skip)
 bot.tree.add_command(warteschlange)
 bot.tree.add_command(restart)
 bot.tree.add_command(info)
+bot.tree.add_command(loop)
 
 bot.run(token["token"])
