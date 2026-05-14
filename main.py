@@ -121,8 +121,12 @@ async def play(interaction: discord.Interaction, query: str):
         await asyncio.sleep(0.5)
         interaction.guild.voice_client.stop()
         await asyncio.sleep(0.5)
-    link = info['url'] if "http" in info['query'] else info['query']
-    await interaction.followup.send(f"Spiele [{info['title']}]({link}) ab!", ephemeral=False)
+    
+    if "http" in info['query']:
+        link = info['query'] 
+    else:
+        link = info['url'] 
+    await interaction.followup.send(f"Spiele ({info['title']}]({link}) ab!", ephemeral=False)
     
 
 @app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
