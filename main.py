@@ -105,7 +105,7 @@ async def play(interaction: discord.Interaction, query: str):
 
     await connect(interaction)
     info = get_info(query)
-    oldq = song_queue
+    oldq = song_queue.copy()
     song_queue.clear()
     song_queue.append(info)
     song_queue.extend(oldq) 
