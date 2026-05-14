@@ -23,7 +23,7 @@ else:
 
 YDL_OPTIONS = {'format': 'bestaudio/best', 'noplaylist': True}
 FFMPEG_OPTIONS = {'options': '-vn'}
-song_queue = []
+song_queue: list[dict] = []
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -36,6 +36,7 @@ cat_games: discord.CategoryChannel = config["cat_games_id"]
 channel_ids: list[discord.TextChannel] = config["ch_ip_ids"]
 channel_music: discord.TextChannel = config["ch_music_id"]
 kaze_id = config["us_Kaze_id"]
+current_song: dict = None
 
 @app_commands.command(name="plugins", description="Zeigt alle Minecraft Plugins an")  
 async def get_plugins(interaction: discord.Interaction, server: str = "ServerOkt2025"):
@@ -86,25 +87,25 @@ async def restart(interaction: discord.Interaction):
 @app_commands.command(name="join", description="Joint deinem Voice Channel")
 async def join(interaction: discord.Interaction):
 
-    await interaction.response.defer()
+    await interaction.response.send_message("Joining...", ephemeral=True, delete_after=3)
     await connect(interaction)
+   
 
 
 @app_commands.command(name="leave", description="Verlässt den Voice Channel")
 async def leave(interaction: discord.Interaction):
-    await interaction.response.defer()
-    if interaction.guild.voice_client:
+    await interaction.response.send_message("Leaving...", ephemeral=True, delete_after=3)
+    if interaction.guild.voice_client and interaction.user.voice and interaction.user.voice.channel and interaction.guild.voice_client.channel == interaction.user.voice.channel:
         await interaction.guild.voice_client.disconnect()
-        await interaction.followup.send("Ich habe den Voice Channel verlassen!", ephemeral=True)
     else:
-        await interaction.followup.send("Ich bin in keinem Voice Channel!", ephemeral=True)
+        await interaction.response.edit_message("Du musst in einem Voice Channel sein, um den Bot zu verlassen!", ephemeral=True, delete_after=5)
 
 @app_commands.command(name="play", description="Skippt die queue / Link oder Suche")
 async def play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
     await connect(interaction)
-    info = get_info(query)
+    info = get_info(query, interaction.user)
     oldq = song_queue.copy()
     song_queue.clear()
     song_queue.append(info)
@@ -120,8 +121,8 @@ async def play(interaction: discord.Interaction, query: str):
         await asyncio.sleep(0.5)
         interaction.guild.voice_client.stop()
         await asyncio.sleep(0.5)
-
-    await interaction.followup.send(f"Spiele [{info['title']}]({info['url']}) ab!", ephemeral=False)
+    link = info['url'] if "http" in info['query'] else info['query']
+    await interaction.followup.send(f"Spiele [{info['title']}]({link}) ab!", ephemeral=False)
     
 
 @app_commands.command(name="pause", description="Pausiert / Resumed die aktuelle Musik")
@@ -136,14 +137,14 @@ async def pause(interaction: discord.Interaction):
 @app_commands.command(name="queue", description="Fügt ein Lied zur Warteschlange hinzu / Link oder Suche")
 async def queue(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
-
+    info = get_info(query, interaction.user)
     await connect(interaction)
     
     if len(song_queue) > config["max_queue_length"]:
         await interaction.followup.send(f"Die Warteschlange ist voll! Maximal {config['max_queue_length']} Lieder erlaubt.", ephemeral=True)
         return
-    song_queue.append(get_info(query))
-    await interaction.followup.send(f"Das Lied wurde zur Warteschlange hinzugefügt!", ephemeral=False)
+    song_queue.append(info)
+    await interaction.followup.send(f"Das Lied {info['title']}[{info['url']}] wurde zur Warteschlange hinzugefügt!", ephemeral=False)
 
 @app_commands.command(name="skip", description="Überspringt das aktuelle Lied")
 async def skip(interaction: discord.Interaction):
@@ -152,6 +153,21 @@ async def skip(interaction: discord.Interaction):
     interaction.guild.voice_client.stop()
     await asyncio.sleep(0.5)
     await interaction.followup.send(f"Lied wurde von {interaction.user.mention} übersprungen!", ephemeral=False)
+
+@app_commands.command(name="info", description="Zeigt Informationen über das aktuelle Lied an")
+async def info(interaction: discord.Interaction):
+    await interaction.response.defer()
+    if interaction.guild.voice_client is None: return
+    if not interaction.guild.voice_client.is_playing(): return
+
+    current_song = song_queue[0] if song_queue else None
+    if not current_song: return
+    if "http" in current_song["query"]:
+        await interaction.followup.send(f"Das Lied {current_song['title']}[{current_song['query']}] wurde von {current_song['user'].mention} hinzugefügt!")
+    else:
+        await interaction.followup.send(f"Das Lied {current_song['title']} wurde von {current_song['user'].mention} unter {current_song['query']} gefunden!")
+
+
 
 @app_commands.command(name="warteschlange", description="Zeigt die aktuelle Warteschlange an")
 async def warteschlange(interaction: discord.Interaction):
@@ -175,10 +191,11 @@ async def connect(interaction):
 
 
 def play_next(interaction):
+    global current_song, song_queue
     vc: discord.VoiceClient = interaction.guild.voice_client
     if vc and len(song_queue) > 0:
         song = song_queue.pop(0) # Nimm das erste Lied aus der Liste
-        
+        current_song = song.copy()
         # Den Stream erstellen
         source = discord.FFmpegPCMAudio(song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
         
@@ -186,17 +203,19 @@ def play_next(interaction):
         vc.play(source, after=lambda e: play_next(interaction))
 
 
-def get_info(url):
+def get_info(url, user):
     if "http" not in url:
         #Wenn es kein Link ist, sondern eine Suche, dann suche nach dem ersten Ergebnis mit url als query
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(f"ytsearch:{url}", download=False)['entries'][0]
-            url = info['url']
+
     
     else: 
         with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(url, download=False)
-            url = info['url']
+
+    info["query"] = url
+    info["user"] = user
     return info
 
 
