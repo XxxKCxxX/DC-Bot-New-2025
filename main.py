@@ -152,7 +152,7 @@ async def queue(interaction: discord.Interaction, query: str):
         link = information['query'] 
     else:
         link = information['url'] 
-    await interaction.followup.send(f"Das Lied ({information['title']})[{link}] wurde zur Warteschlange hinzugefügt!", ephemeral=False)
+    await interaction.followup.send(f"Das Lied [{information['title']}]({link}) wurde zur Warteschlange hinzugefügt!", ephemeral=False)
 
 @app_commands.command(name="skip", description="Überspringt das aktuelle Lied")
 async def skip(interaction: discord.Interaction):
@@ -323,5 +323,6 @@ bot.tree.add_command(queue)
 bot.tree.add_command(skip)
 bot.tree.add_command(warteschlange)
 bot.tree.add_command(restart)
+bot.tree.add_command(info)
 
 bot.run(token["token"])
