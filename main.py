@@ -213,7 +213,7 @@ def play_next(interaction):
     global current_song, song_queue
     vc: discord.VoiceClient = interaction.guild.voice_client
     if bool_loop and current_song is not None:
-        source = discord.FFmpegPCMAudio(song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
+        source = discord.FFmpegPCMAudio(current_song['url'], executable=FFMPEG_EXE, **FFMPEG_OPTIONS)
         vc.play(source, after=lambda e: play_next(interaction))
         return
     if vc and len(song_queue) > 0:
