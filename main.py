@@ -167,9 +167,9 @@ async def queue(interaction: discord.Interaction, query: str):
 async def skip(interaction: discord.Interaction):
     await interaction.response.defer()
     if interaction.guild.voice_client is None: return
+    await interaction.followup.send(f"Lied {current_song['title']} wird von {interaction.user.mention} übersprungen!", ephemeral=False)
     interaction.guild.voice_client.stop()
     await asyncio.sleep(0.5)
-    await interaction.followup.send(f"Lied {current_song['title']} wurde von {interaction.user.mention} übersprungen!", ephemeral=False)
 
 @app_commands.command(name="info", description="Zeigt Informationen über das aktuelle Lied an")
 async def info(interaction: discord.Interaction):
